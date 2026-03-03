@@ -1,126 +1,122 @@
 import csv
 import os
 from pathlib import Path
-import pandas as pd
+import pandas as pd #IF it was commercial i would need to check license if i want to use it
 
-class check_format:
-    """This class will be used to check the input format of for the Process_csv class in order for it to sucessfully opperate"""
-    def __init__(self, *args):
+class AutoConvert:
+    """This class will auto convert the rows if needed in order for the user not to need to enter this step manually
+    It can either run independently from the DataManager class or run in sync with it
+    """
+    def __init__(self, types, label, access_to_db):
+        self.type=types
+        self.label=label
+        self.access_to_db=access_to_db
+    def do_conversions(self):
+        """This function will be used to convert columns if needed in order for later opperations
+        This function can also run independently from the rest of the class if needed (FUTURE)
+        """
+        thing_to_convert=self.label
+        if self.type== int: #This is still somewhat hard coded and could still be improved
+            self.access_to_db[thing_to_convert] = (
+                self.access_to_db[thing_to_convert]
+                .astype(str)
+                .str.replace(",", "")   #this is too hardcoded    
+                .str.replace("$", "")   #This is too hardcoded   
+                .astype(float)
+                )    
+        elif self.action == str:
+            self.access_to_db[thing_to_convert]=str(self.access_to_db[thing_to_convert])
+        return True
 
-        ...
-    def decide(self):
-        ...
-class auto_convert:
-    """This class will auto convert the rows if needed in order for the user not to need to enter this step manually"""
-    def __init__(self, **kwargs):
-        ... 
+class Config:
+    """This will be something of an interface class where it is responsable for the inputs"""
+    def __init__(self, dictionary_of_inputs):
+        self.dictionary_of_inputs=dictionary_of_inputs
+        try:
+            self.path_to_read = self.dictionary_of_inputs["reading_path"]
+            self.path_to_write = self.dictionary_of_inputs["writing_path"]
+            self.path_to_reference = self.dictionary_of_inputs["reference_point"]
+            self.label_to_change = self.dictionary_of_inputs["label_to_change"]
+            self.action = self.dictionary_of_inputs["action"]
+            self.expected_columns = self.dictionary_of_inputs["expected_columns"]
+            self.type_of_opp = self.dictionary_of_inputs["type_of_opp"]
+            self.access_to_db = None
+            
+        except:
+            raise ValueError( "Invalid input was given " )
+    
 
-class Prep_csv:
+
+class DataManager:
     """This class is used as a prep stage. It will ensure there are sufficent paths provided as well as ensure the following:
     - Path exsists
     - CSV has the correct headers
     - Has correct type
     - CSV to write has correct format
     """
-    def __init__(self,paths: list[str, str],lables: list[str,str], action: list[int,bool], expected_columns):
-        self.action=action
-        self.paths=paths
-        self.lables=lables
-        self.expected_columns=expected_columns
-        self.access_to_db=None
-    
+    def __init__(self,dictionary_of_inputs):
+        
+        self.inputs_from_user = Config(dictionary_of_inputs)
+        self.path_to_read = self.inputs_from_user.path_to_read
+        self.path_to_write = self.inputs_from_user.path_to_write
+        self.path_to_reference = self.inputs_from_user.path_to_reference
+        self.label_to_change = self.inputs_from_user.label_to_change
+        self.action = self.inputs_from_user.action
+        self.expected_columns = self.inputs_from_user.expected_columns
+        self.access_to_db = self.inputs_from_user.access_to_db
+        self.type_of_opp = self.inputs_from_user.type_of_opp
+        
+        self.read_csv_path()
+            
     def read_csv_path(self):
         """This function will read the provided file path and ensure the expected csv file already exists and is in correct format
         if not in the correct format it will either convert it if requested or will void the opperation
         """
-        if not os.path.exists(self.paths[1]) or not os.path.exists(self.paths[0]) :
-            return False
-        self.access_to_db = pd.read_csv(self.paths[0])
+        if not os.path.exists(self.path_to_read) or not os.path.exists(self.path_to_write) :
+            raise ValueError("Paths don't exist")
+        self.access_to_db = pd.read_csv(self.path_to_read)
         
         actual_columns=list(self.access_to_db.columns)
-        if actual_columns!= self.expected_columns or self.lables[1] not in actual_columns or self.lables[0] not in actual_columns:
+        if actual_columns!= self.expected_columns or self.path_to_reference not in actual_columns or self.label_to_change not in actual_columns:
             raise ValueError("CSV Structure Mismatch")
         return True
-        
-    def do_conversions(self,):
-        """This function will be used to convert columns if needed in order for later opperations
-        This function can also run independently from the rest of the class if needed (FUTURE)
-        """
-        thing_to_convert=self.lables[self.action[0]]
-        if self.action[1]== int: #This is still somewhat hard coded and could still be improved
-            self.access_to_db[thing_to_convert] = (
-                self.access_to_db[thing_to_convert]
-                .astype(str)
-                .str.replace(",", "")       
-                .str.replace("$", "")      
-                .astype(float)
-                )    
-        elif self.action[1] == str:
-            self.access_to_db[thing_to_convert]=str(self.access_to_db[thing_to_convert])
-        return True
-    def is_working(self):
-        if Prep_csv.read_csv_path(self)== True and Prep_csv.do_conversions(self) == True:
+    
+    def ConvertingColumn(self):
+        actual_conversion = AutoConvert(self.action, self.label_to_change, self.access_to_db)
+        if actual_conversion.do_conversions() == True:
             return True
-    def File_reader(self):
-        return self.access_to_db
-               
-class Process_csv:
-    def __init__(self,paths: list[str, str],lables: list[str,str], action: list[int,bool], expected_columns,type_of_opp):
         
-        self.check_if_valid=Prep_csv(paths,lables, action, expected_columns)# This verifies that the csv exsists and is working as expected
-        if self.check_if_valid.is_working() == True:
-            self.paths=paths
-            self.lables=lables
-            self.action=action
-            self.type_of_opp=type_of_opp
-            self.dicti={}
+    
+                   
+
+class ProcessCSV:
+    """Controlling class that controls both the prep_csv and the prep_input_data
+    
+    
+    """
+    def __init__(self, csv_call_dictionary):
+        """This initializes the config which is then passed to the data manager which does all the needed opperations"""
+        self.user_data_configurator=DataManager(csv_call_dictionary)
+    
+    def UserDecidedAction(self):
+        access_to_db=self.user_data_configurator.access_to_db
+        
+        if self.user_data_configurator.type_of_opp == "Average":
+            if self.user_data_configurator.action == int:
+                self.user_data_configurator.ConvertingColumn()
+                return access_to_db.groupby(self.user_data_configurator.path_to_reference)[self.user_data_configurator.label_to_change].mean() 
+        if self.user_data_configurator.type_of_opp == "list":
+            return access_to_db.groupby(self.user_data_configurator.path_to_reference)[self.user_data_configurator.label_to_change]
         else:
-            raise ValueError("Faild to verify CSV flie")
-        
-    def decision(self):
-        access_to_db=self.check_if_valid.File_reader()
-        if self.type_of_opp == "Average":
-            return access_to_db.groupby(self.lables[1])[self.lables[0]].mean() 
-        if self.type_of_opp == "list":
-            return access_to_db.groupby(self.lables[1])[self.lables[0]]
+            raise ValueError ("There was not given an correct type_of_opp")
             
     def csv_writers(self) -> bool:
         """This function will write to a csv file. But only the selected values and nothing more """
-        
-        return Process_csv.decision(self).to_frame(name=self.type_of_opp).to_csv("output.csv")
+        return self.UserDecidedAction().to_frame(self.user_data_configurator.type_of_opp).to_csv(f"{self.user_data_configurator.type_of_opp}_output.csv")
+   
        
 
 #Declarers to make it more flexible
-def call_csv_class():
-    """This function will be called and contains all the most important things that will needed to be given as input for the Process_csv class.
-    This is done sothat only this function needs to be modified if needed
-    The inputs needed:
-    paths=[path for csv, path to write]
-    labels=[what is being measured, who  is being measured ]
-    action=[index of the labels that needs to be adjusted, to what it needs to be converted to]
-    expected_columns = [Represents the expected columns that are expected in the csv]
-    type_of_opp= str: is the opperation that is being done to the labels[0]
-    prep_work: Actually calls the Process_csv  class
-    Pros:
-    - System is more modular and u dont have things stored in one dict
-    -system is more modular by itself
-    Cons:
-    - Order matters a lot
-    - A bit more hard coded classes
-    """
-    paths:list=[Path("data/data_read/Chocolate Sales (2).csv"),Path("data/data_write/")]
-    labels:list=["Amount","Sales Person" ]
-    action:list=[0,int]
-    expected_columns:list=["Sales Person","Country","Product","Date","Amount","Boxes Shipped"]
-    type_of_opp: str="Average"
-    prep_work=Process_csv(paths,labels,action,expected_columns,type_of_opp )  
-    if prep_work.csv_writers():
-        return True
-
-
-if call_csv_class() == True:
-    print("All actions have been completed sucessfullly")
-
 def improved_call_csv_class():
     """
     This way of calling the class Process_csv is used if only one dictionary is provided.
@@ -130,20 +126,28 @@ def improved_call_csv_class():
     writing_path: str= Path("data/data_write/")
     reference_point:str="Sales Person" 
     thing_to_change: str="Amount"
-    action:list=[0,int] # -> this shouldnt need to be given
-
+    action:type=int # -> this shouldnt need to be given but for now its a ok fix
     expected_columns:list=["Sales Person","Country","Product","Date","Amount","Boxes Shipped"]
-    type_of_opp: str="Average"
+    type_of_opp: str= "Average"
     
-    input_dict={"reading path":reading_path, 
-                "writing path":writing_path,
+    input_dict={"reading_path":reading_path, 
+                "writing_path":writing_path,
                 "reference_point":reference_point, 
-                "label to change": thing_to_change,
+                "label_to_change": thing_to_change,
                 "action":action,
                 "expected_columns":expected_columns,
                 "type_of_opp": type_of_opp }
     
-    #prep_work=Process_csv(dictionary_to_call=input_dict)  
-    #if prep_work.csv_writers():
-        #return True
+    prep_work: ProcessCSV=ProcessCSV(input_dict)  
+    if prep_work.csv_writers():
+        return True
     
+
+
+
+if improved_call_csv_class():
+    print("All actions have been completed sucessfullly")
+
+
+#learn more about interfaces
+#SOLID -> LEARN
