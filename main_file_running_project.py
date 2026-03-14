@@ -55,64 +55,57 @@ class DataManager:
     - CSV to write has correct format
     """
     def __init__(self,dictionary_of_inputs):
-        
-        self.inputs_from_user = Config(dictionary_of_inputs)
-        self.path_to_read = self.inputs_from_user.path_to_read
-        self.path_to_write = self.inputs_from_user.path_to_write
-        self.path_to_reference = self.inputs_from_user.path_to_reference
-        self.label_to_change = self.inputs_from_user.label_to_change
-        self.action = self.inputs_from_user.action
-        self.expected_columns = self.inputs_from_user.expected_columns
-        self.access_to_db = self.inputs_from_user.access_to_db
-        self.type_of_opp = self.inputs_from_user.type_of_opp
-        
+        self.inputs_from_user:Config = Config(dictionary_of_inputs)  
         self.read_csv_path()
             
     def read_csv_path(self):
         """This function will read the provided file path and ensure the expected csv file already exists and is in correct format
         if not in the correct format it will either convert it if requested or will void the opperation
         """
-        if not os.path.exists(self.path_to_read) or not os.path.exists(self.path_to_write) :
-            raise ValueError("Paths don't exist")
-        self.access_to_db = pd.read_csv(self.path_to_read)
+        if not os.path.exists(self.inputs_from_user.path_to_read) or not os.path.exists(self.inputs_from_user.path_to_write) :
+            raise ValueError("Paths don't exist", self.inputs_from_user.path_to_read, self.inputs_from_user.path_to_write)
         
-        actual_columns=list(self.access_to_db.columns)
-        if actual_columns!= self.expected_columns or self.path_to_reference not in actual_columns or self.label_to_change not in actual_columns:
+        self.inputs_from_user.access_to_db = pd.read_csv(self.inputs_from_user.path_to_read)
+        
+        actual_columns=list(self.inputs_from_user.access_to_db.columns)
+        if actual_columns!= self.inputs_from_user.expected_columns or self.inputs_from_user.path_to_reference not in actual_columns or self.inputs_from_user.label_to_change not in actual_columns:
             raise ValueError("CSV Structure Mismatch")
         return True
     
     def ConvertingColumn(self):
-        actual_conversion = AutoConvert(self.action, self.label_to_change, self.access_to_db)
+        actual_conversion = AutoConvert(self.inputs_from_user.action, self.inputs_from_user.label_to_change, self.inputs_from_user.access_to_db)
         if actual_conversion.do_conversions() == True:
             return True
+    def return_config(self):
+        return self.inputs_from_user
         
     
                    
 
 class ProcessCSV:
     """Controlling class that controls both the prep_csv and the prep_input_data
-    
-    
     """
     def __init__(self, csv_call_dictionary):
         """This initializes the config which is then passed to the data manager which does all the needed opperations"""
         self.user_data_configurator=DataManager(csv_call_dictionary)
+        self.config_data = self.user_data_configurator.return_config()
+
     
     def UserDecidedAction(self):
-        access_to_db=self.user_data_configurator.access_to_db
+        access_to_db=self.user_data_configurator.inputs_from_user.access_to_db
         
-        if self.user_data_configurator.type_of_opp == "Average":
-            if self.user_data_configurator.action == int:
+        if self.user_data_configurator.inputs_from_user.type_of_opp == "Average":
+            if self.config_data.action == int:
                 self.user_data_configurator.ConvertingColumn()
-                return access_to_db.groupby(self.user_data_configurator.path_to_reference)[self.user_data_configurator.label_to_change].mean() 
-        if self.user_data_configurator.type_of_opp == "list":
-            return access_to_db.groupby(self.user_data_configurator.path_to_reference)[self.user_data_configurator.label_to_change]
+                return access_to_db.groupby(self.config_data.path_to_reference)[self.config_data.label_to_change].mean() 
+        if self.user_data_configurator.inputs_from_user.type_of_opp == "list":
+            return access_to_db.groupby(self.config_data.path_to_reference)[self.config_data.label_to_change]
         else:
             raise ValueError ("There was not given an correct type_of_opp")
             
     def csv_writers(self) -> bool:
         """This function will write to a csv file. But only the selected values and nothing more """
-        return self.UserDecidedAction().to_frame(self.user_data_configurator.type_of_opp).to_csv(f"{self.user_data_configurator.type_of_opp}_output.csv")
+        return self.UserDecidedAction().to_frame(self.config_data.type_of_opp).to_csv(f"{self.config_data.type_of_opp}_output.csv")
    
        
 
