@@ -11,8 +11,6 @@ class Config:
             self.path_to_read = self.dictionary_of_inputs["reading_path"]
             self.path_to_write = self.dictionary_of_inputs["writing_path"]
             self.path_to_reference = self.dictionary_of_inputs["reference_point"] #change this to a list or similar
-            self.label_to_change = self.dictionary_of_inputs["label_to_change"]
-            self.action = self.dictionary_of_inputs["action"]
             self.expected_columns = self.dictionary_of_inputs["expected_columns"]
             self.type_of_opp = self.dictionary_of_inputs["type_of_opp"]
             self.access_to_db = None
@@ -26,8 +24,9 @@ class ApplyUserTask:
         self.config = config
         self.task = config.type_of_opp
         
-        self.autoconvert = ApplyConversions(config)
+        self.autoconvert = CoordinateConversions(config)
     def apply_task(self):
+        """This function decides what task will need to be run in the ApplyConversions class"""
         if self.task == "Average":
             return self.autoconvert.average()
         else:
@@ -35,58 +34,77 @@ class ApplyUserTask:
 
 
 
-class ApplyConversions:
-    """This class will coordinate the needed conversions to the file.
-    Average -> needs ints
+
+class CoordinateConversions:
+    """
+    This class will coordinate the needed conversions to the file.
     """
     def __init__(self, config):
         self.config = config
-        self.needs_conversion = {x:[i] for i,x in enumerate(self.config.path_to_reference)}
-        self.opperation_type = int
-
-    def identify_what_to_convert(self):
-        user_headers = self.config.path_to_reference
-        for header in user_headers:
-            thing_checking = self.config.access_to_db[header]
-            total_lines = 0
-            total = 0
-            current_type = []
-            for line in thing_checking:
-                contains_number = any(char.isdigit() for char in line)
-                if contains_number:
-                    total +=1
-                total_lines +=1
-                if type(line) not in current_type:
-                    current_type.append(type(line))
-            if len(current_type) == 1:     
-                if total == total_lines:
-                    if current_type[0] != float or current_type[0] != int:
-                        self.needs_conversion[header]=[False, float]
-                    else:
-                        self.needs_conversion[header]=[True, float]
-                else:
-                    self.needs_conversion[header]=[True,str]
-        return self.needs_conversion
     
-    def converting_column(self):
-        self.identify_what_to_convert()
+    def average(self):
+        """For average the label to change
+        It first checks that no columns must be changed.
+        if columns must be changed it does so automatically such that the final average opperation is passed throough successfully
+           """
+        detecting_columns_to_convert = DetectingColumnsToConvert(self.config)
+        converting_columns = ConvertingColumns(self.config, detecting_columns_to_convert.identify_what_to_convert())
+        converting_columns.converting_column()
+        return self.config.access_to_db.groupby(self.config.path_to_reference[0])[self.config.path_to_reference[1]].mean()
+
+    def listing_items(self):
+        """This function will be used if the user simply decides to get items listed""" 
+    
+        
+class DetectingColumnsToConvert:
+    def __init__(self, config):
+        self.config = config
+        self.needs_conversion = {x:[i] for i,x in enumerate(self.config.path_to_reference)}
+    def identify_what_to_convert(self):
+        """
+        This is gpt enhanced version of my code so that it is a bit more functional programming style
+        """
+        def analyze_column(values):
+            values = list(values)
+
+            types = {type(v) for v in values}
+            all_have_digits = all(any(ch.isdigit() for ch in str(v)) for v in values)
+
+            if len(types) == 1:
+                only_type = next(iter(types))
+                if all_have_digits:
+                    if only_type in (int, float):
+                        return [True, float]
+                    return [False, float]
+            return [True, str]
+
+        headers = self.config.path_to_reference
+        db = self.config.access_to_db
+
+        self.needs_conversion = {header: analyze_column(db[header]) for header in headers}
+        return self.needs_conversion
+
+
+class ConvertingColumns:
+    def __init__(self, config, dict):
+        self.config = config
+        self.needs_conversion = dict
+    def converting_column(self) -> bool:
+        """This function is in charge of ensuring that columns that have been identified to be in the wrong format be converted into the correct format"""
         for header in self.config.path_to_reference:
-            if self.needs_conversion[header][0] == False:
+            if self.needs_conversion[header][0] == False :
                 if self.needs_conversion[header][1] == float:
-                    if self.do_conversion_to_int(header) == True:
+                    if self.convert_to_float(header) == True:
                         self.needs_conversion[header][0] = True
                     else: raise ValueError("Failed to do some conversion on",self.needs_conversion[header] )
             else:
                 self.needs_conversion[header][0] = True
-        print(self.needs_conversion)
         return True
-
-    
-    def do_conversion_to_int(self, converting):
+    def convert_to_float(self, converting) -> bool:
         """This function will be used to convert columns if needed in order for later opperations
         This function can also run independently from the rest of the class if needed 
         """
-        thing_to_convert=converting
+        thing_to_convert:str =converting
 
         self.config.access_to_db[thing_to_convert] = (
                 self.config.access_to_db[thing_to_convert]
@@ -97,16 +115,16 @@ class ApplyConversions:
                 )    
         return True
     
-    def average(self):
-        """For average the label to change """
-        self.converting_column() 
-        return self.config.access_to_db.groupby(self.config.path_to_reference[0])[self.config.path_to_reference[1]].mean() 
+    def convert_to_int(self):
+        """FOR FUTURE. IGNORE FOR Now"""
+        ...
 
-
-
-
+    def collect_items(self):
+        """
+        This function will be used when the user wants to simply collect items from the db(FUTURE)
+        """
     
-
+    
 
 class DataManager:
     """This class is used as a prep stage. It will ensure there are sufficent paths provided as well as ensure the following:
@@ -178,9 +196,7 @@ def process_csv():
     """
     reading_path:str=Path("data/data_read/Chocolate Sales (2).csv")
     writing_path: str= Path("data/data_write/")
-    reference_point:list =["Sales Person","Amount"] #Order doesn't matter
-    thing_to_change: str="Amount"
-    action:type=int # -> this shouldnt need to be given but for now its a ok fix
+    reference_point:list =["Sales Person","Amount"] #Order  matters
     expected_columns:list=["Sales Person","Country","Product","Date","Amount","Boxes Shipped"]
     type_of_opp: str= "Average"
     message = "Find average sale per sales person" #-> future idea where user simply enters this and system detects it and executes the task specified
@@ -188,8 +204,6 @@ def process_csv():
     input_dict={"reading_path":reading_path, 
                 "writing_path":writing_path,
                 "reference_point":reference_point, 
-                "label_to_change": thing_to_change,
-                "action":action,
                 "expected_columns":expected_columns,
                 "type_of_opp": type_of_opp }
     
@@ -197,9 +211,6 @@ def process_csv():
     if prep_work.csv_writers():
         return True
     
-
-
-
 if process_csv():
     print("All actions have been completed sucessfullly")
 
