@@ -3,7 +3,32 @@ import os
 from pathlib import Path
 import pandas as pd #IF it was commercial i would need to check license if i want to use it
 
-class Config:
+
+from interfaces import BaseAverage, BaseGatherValues
+
+
+class Average(BaseAverage):
+    def __init__(self, config):
+        super().__init__()
+        self.config = config
+        
+    def get_value(self):
+        
+        detecting_columns_to_convert = DetectingColumnsToConvert(self.config)
+        detecting_columns_to_convert.identify_what_to_convert()
+        detecting_columns_to_convert.detected_column_mismatch_conversion()
+        if detecting_columns_to_convert:
+            return True
+        return False
+        
+    def get_average(self):
+        if self.get_value() == True:
+            return self.config.access_to_db.groupby(self.config.path_to_reference[0])[self.config.path_to_reference[1]].mean()
+        else:
+            raise ValueError("Failed to verfiy input")
+
+
+class InputConfiguration:
     """This will be something of an interface class where it is responsable for the inputs"""
     def __init__(self, dictionary_of_inputs):
         self.dictionary_of_inputs=dictionary_of_inputs
@@ -17,43 +42,41 @@ class Config:
             
         except:
             raise ValueError( "Invalid input was given " )
+ 
 
 class ApplyUserTask:
     """This class is to apply the tasks that the user wants to do."""
-    def __init__(self, config):
+    def __init__(self, config, ):
         self.config = config
         self.task = config.type_of_opp
-        
-        self.autoconvert = CoordinateConversions(config)
+       
     def apply_task(self):
         """This function decides what task will need to be run in the ApplyConversions class"""
         if self.task == "Average":
-            return self.autoconvert.average()
+            average = Average(self.config)
+            self.autoconvert = CoordinateUserTask(self.config, type_of_opperation = self.task, I_of_opperation = average )
+              
         else:
             raise ValueError ("There was not given an correct type_of_opp")
+        return self.autoconvert.run_task()
 
 
 
 
-class CoordinateConversions:
-    """
-    This class will coordinate the needed conversions to the file.
-    """
-    def __init__(self, config):
+class CoordinateUserTask:
+    def __init__(self, config, type_of_opperation: str, I_of_opperation: BaseAverage):
+        self.type_of_opperation: str = type_of_opperation
         self.config = config
+        self.I_of_opperation = I_of_opperation
+        self.task = None
     
-    def average(self):
-        """For average the label to change
-        It first checks that no columns must be changed.
-        if columns must be changed it does so automatically such that the final average opperation is passed throough successfully
-           """
-        detecting_columns_to_convert = DetectingColumnsToConvert(self.config)
-        detecting_columns_to_convert.identify_what_to_convert()
-        detecting_columns_to_convert.detected_column_mismatch_conversion()
-        return self.config.access_to_db.groupby(self.config.path_to_reference[0])[self.config.path_to_reference[1]].mean()
-
-    def listing_items(self):
-        """This function will be used if the user simply decides to get items listed""" 
+    def run_task(self):
+        # Removed the stray Average(self.config) — use the injected I_of_opperation only
+        if self.type_of_opperation == "Average":
+            self.task = self.I_of_opperation.get_average()
+        if self.type_of_opperation == "Gather":
+            ...
+        return self.task
     
         
 class DetectingColumnsToConvert:
@@ -82,7 +105,7 @@ class DetectingColumnsToConvert:
         headers = self.config.path_to_reference
         db = self.config.access_to_db
 
-        self.needs_conversion = {header: analyze_column(db[header]) for header in headers}
+        self.needs_conversion: dict[ {"some", int}] = {header: analyze_column(db[header]) for header in headers}
         return self.needs_conversion
     
     def detected_column_mismatch_conversion(self) -> bool:
@@ -101,6 +124,7 @@ class DetectingColumnsToConvert:
 class ConvertingColumns:
     def __init__(self, config):
         self.config = config
+    
     def convert_to_float(self, converting) -> bool:
         """This function will be used to convert columns if needed in order for later opperations
         This function can also run independently from the rest of the class if needed 
@@ -137,7 +161,7 @@ class DataManager:
     - CSV to write has correct format
     """
     def __init__(self,dictionary_of_inputs):
-        self.inputs_from_user:Config = Config(dictionary_of_inputs)
+        self.inputs_from_user:InputConfiguration = InputConfiguration(dictionary_of_inputs)
         self.read_csv_path()
                 
     def read_csv_path(self):
@@ -162,13 +186,15 @@ class DataManager:
             return True
         return False
     
+    
+
     def return_config(self):
         return self.inputs_from_user
         
     
                    
 
-class ProcessCSV:
+class DataPipelineManager:
     """Controlling class that controls the data flow
     1. DataManager is called to verify the data
     2. If needed the data is converted by DoConversions
@@ -182,6 +208,7 @@ class ProcessCSV:
 
     
     def UserDecidedAction(self):
+
         apply_user_task = ApplyUserTask(self.config_data)
         return apply_user_task.apply_task()
       
@@ -210,7 +237,7 @@ def process_csv():
                 "expected_columns":expected_columns,
                 "type_of_opp": type_of_opp }
     
-    prep_work: ProcessCSV=ProcessCSV(input_dict)  
+    prep_work: DataPipelineManager=DataPipelineManager(input_dict)  
     if prep_work.csv_writers():
         return True
     
