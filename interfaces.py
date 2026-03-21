@@ -14,6 +14,9 @@ class BaseGatherValues(ABC):
         pass
 
 class BaseDataPipelineManager(ABC):
+    @abstractmethod
+    def UserDecidedAction(self):
+        pass
     
     @abstractmethod
     def csv_writers(self):
