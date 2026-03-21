@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd #IF it was commercial i would need to check license if i want to use it
 
 
-from interfaces import BaseAverage, BaseGatherValues
+from interfaces import BaseAverage, BaseGatherValues, BaseDataManager, BaseDataPipelineManager
 
 
 class Average(BaseAverage):
@@ -29,6 +29,8 @@ class Average(BaseAverage):
 
 
 class InputConfiguration:
+
+    ...
     """This will be something of an interface class where it is responsable for the inputs"""
     def __init__(self, dictionary_of_inputs):
         self.dictionary_of_inputs=dictionary_of_inputs
@@ -59,9 +61,6 @@ class ApplyUserTask:
         else:
             raise ValueError ("There was not given an correct type_of_opp")
         return self.autoconvert.run_task()
-
-
-
 
 class CoordinateUserTask:
     def __init__(self, config, type_of_opperation: str, I_of_opperation: BaseAverage):
@@ -153,7 +152,7 @@ class Collect_items:
     
     
 
-class DataManager:
+class DataManager(BaseDataManager):
     """This class is used as a prep stage. It will ensure there are sufficent paths provided as well as ensure the following:
     - Path exsists
     - CSV has the correct headers
@@ -194,15 +193,15 @@ class DataManager:
     
                    
 
-class DataPipelineManager:
+class DataPipelineManager(BaseDataPipelineManager):
     """Controlling class that controls the data flow
     1. DataManager is called to verify the data
     2. If needed the data is converted by DoConversions
     """
     def __init__(self, csv_call_dictionary):
         """This initializes the config which is then passed to the data manager which does all the needed opperations"""
-        self.user_data_configurator=DataManager(csv_call_dictionary)
-        if self.user_data_configurator.validate() == False:
+        self.user_data_configurator:DataManager = DataManager(csv_call_dictionary)
+        if self.user_data_configurator.validate() == False :
             raise ValueError("Failed to prepare the data")
         self.config_data = self.user_data_configurator.return_config()
 
