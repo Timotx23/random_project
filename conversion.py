@@ -3,6 +3,7 @@ class DetectingColumnsToConvert:
         self.config = config
         self.needs_conversion = {x:[i] for i,x in enumerate(self.config.path_to_reference)}
         self.column_conversion = ConvertingColumns(config)
+    
     def identify_what_to_convert(self):
         """
         This is gpt enhanced version of my code so that it is a bit more functional programming style
@@ -48,7 +49,7 @@ class ConvertingColumns:
         """This function will be used to convert columns if needed in order for later opperations
         This function can also run independently from the rest of the class if needed 
         """
-        thing_to_convert:str =converting
+        thing_to_convert:str = converting
 
         self.config.access_to_db[thing_to_convert] = (
                 self.config.access_to_db[thing_to_convert]
