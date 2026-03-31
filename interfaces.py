@@ -1,10 +1,6 @@
 from abc import ABC, abstractmethod
 class BaseAverage(ABC):
     @abstractmethod
-    def get_value(self):
-        pass
-
-    @abstractmethod
     def get_average(self):
         pass
 
@@ -15,7 +11,7 @@ class BaseGatherValues(ABC):
 
 class BaseDataPipelineManager(ABC):
     @abstractmethod
-    def UserDecidedAction(self):
+    def user_decided_action(self):
         pass
     
     @abstractmethod
@@ -30,5 +26,14 @@ class BaseDataManager(ABC):
 
     @abstractmethod
     def return_config(self):
+        pass
+
+class Operation(ABC):
+    def __init__(self, config, key):
+        self.config = config
+        self.key = key
+
+    @abstractmethod
+    def execute(self):
         pass
 

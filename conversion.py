@@ -2,9 +2,14 @@ class DetectingColumnsToConvert:
     def __init__(self, config):
         self.config = config
         self.needs_conversion = {x:[i] for i,x in enumerate(self.config.path_to_reference)}
-        self.column_conversion = ConvertingColumns(config)
+        self.column_conversion = None       
+        
     
-    def identify_what_to_convert(self):
+    def converting_column(self):
+        """Initiate the Converting columns class"""
+        self.column_conversion = ConvertingColumns(self.config)
+    
+    def identify_what_to_convert(self) -> list[bool, type]:
         """
         This is gpt enhanced version of my code so that it is a bit more functional programming style
         """
@@ -39,11 +44,21 @@ class DetectingColumnsToConvert:
             else:
                 self.needs_conversion[header][0] = True
         return True
+    
+    def conversion_process(self) -> bool:
+        """This is the key function that will be called by the operation to ensure that all the necessary functions are called in correct order and effectivly"""
+        try:
+            self.converting_column()
+            self.identify_what_to_convert()
+            self.detected_column_mismatch_conversion()
+        except:
+            raise ValueError("Error in conversion")
+        return True
 
 
-class ConvertingColumns:
+class ConvertingColumns(DetectingColumnsToConvert):
     def __init__(self, config):
-        self.config = config
+        super().__init__(config)
     
     def convert_to_float(self, converting) -> bool:
         """This function will be used to convert columns if needed in order for later opperations

@@ -27,10 +27,13 @@ class DataManager(BaseDataManager):
     - CSV to write has correct format
     """
     def __init__(self,dictionary_of_inputs):
-        self.inputs_from_user:InputConfiguration = InputConfiguration(dictionary_of_inputs)
-        self.read_csv_path()
+        self.dictionary_of_inputs = dictionary_of_inputs
+        self.inputs_from_user:InputConfiguration = None
+
+    def _input_config(self) -> InputConfiguration:
+        self.inputs_from_user = InputConfiguration(self.dictionary_of_inputs)
                 
-    def read_csv_path(self):
+    def _read_csv_path(self) -> bool:
         """This function will read the provided file path and ensure the expected csv file already exists and is in correct format
         if not in the correct format it will either convert it if requested or will void the opperation
         """
@@ -40,19 +43,26 @@ class DataManager(BaseDataManager):
         self.inputs_from_user.access_to_db = pd.read_csv(self.inputs_from_user.path_to_read)
         return True
     
-    def validate_columns(self):  
-        actual_columns=list(self.inputs_from_user.access_to_db.columns)
-        if actual_columns!= self.inputs_from_user.expected_columns:
+    def _validate_columns(self) -> bool:  
+        actual_columns = list(self.inputs_from_user.access_to_db.columns)
+        if actual_columns != self.inputs_from_user.expected_columns:
             raise ValueError("CSV Structure Mismatch")
         return True
    
-    def validate(self):
+    def validate(self) -> bool:
         """this validates that all the prerequisite tasks have been completed and allows system to continoue with the process"""
-        if self.validate_columns() == True and self.read_csv_path() == True:
-            return True
-        return False
+        #enhance this system so it detects what exactly failed instead of just a summary -> this will improve debugging and error handling
+        try:
+            self._input_config()
+            self._read_csv_path()
+            self._validate_columns()
+        except:
+            return False
+        return True
     
-    
-
-    def return_config(self):
+    def return_config(self) -> InputConfiguration:
+        try:
+            self.validate()
+        except:
+            raise ValueError("Failed to validate some input")
         return self.inputs_from_user
