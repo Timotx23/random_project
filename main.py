@@ -1,7 +1,4 @@
 import csv
-
-
-
 #imports of classes
 from interfaces import  BaseDataPipelineManager
 from opperations import Operation

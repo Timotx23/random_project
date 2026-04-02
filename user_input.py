@@ -5,7 +5,7 @@ def process_csv():
     This way of calling the class Process_csv is used if only one dictionary is provided.
     All inputs are still the same just cleaner to read and better structuring 
     """
-    reading_path:str =Path("data/data_read/Chocolate Sales (2).csv")
+    reading_path:str = Path("data/data_read/Chocolate Sales (2).csv")
     writing_path: str = Path("data/data_write/")
     reference_point:list = ["Sales Person","Amount"] #Order  matters
     expected_columns:list= ["Sales Person","Country","Product","Date","Amount","Boxes Shipped"]

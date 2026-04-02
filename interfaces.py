@@ -1,8 +1,15 @@
 from abc import ABC, abstractmethod
+from pathlib import Path
+
+
+
 class BaseAverage(ABC):
+    def __init__(self, config):
+        self.config = config 
     @abstractmethod
-    def get_average(self):
+    def get_average(self, access_to_db: str, path_to_reference:Path ):
         pass
+    
 
 class BaseGatherValues(ABC):
     @abstractmethod
@@ -28,12 +35,16 @@ class BaseDataManager(ABC):
     def return_config(self):
         pass
 
-class Operation(ABC):
+class BaseOperation(ABC):
     def __init__(self, config, key):
         self.config = config
         self.key = key
 
     @abstractmethod
-    def execute(self):
+    def decision(self):
+        pass
+
+    @abstractmethod
+    def column_conversion(self):
         pass
 

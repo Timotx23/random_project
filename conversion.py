@@ -1,15 +1,31 @@
-class DetectingColumnsToConvert:
+
+from pathlib import Path
+class ColumnTypeDetector:
     def __init__(self, config):
         self.config = config
-        self.needs_conversion = {x:[i] for i,x in enumerate(self.config.path_to_reference)}
-        self.column_conversion = None       
+        self.needs_conversion: dict = None
+        self.column_conversion:ColumnConverter = None       
         
+    def conversion_process(self) -> bool:
+        """This is the key function that will be called by the operation to ensure that all the necessary functions are called in correct order and effectivly
+        Is a instructor of sorts as it gives the inputs that the rest of the functions take such that they can effectivly run
+        """
+        try:
+            path_to_reference: Path = self.config.path_to_reference
+            access_to_db: str = self.config.access_to_db
+            self.init_column_converter()
+            self.identify_what_to_convert(path_to_reference, access_to_db)
+            self.detected_column_mismatch_conversion(path_to_reference)
+        except:
+            raise ValueError("Error in conversion")
+        return True
     
-    def converting_column(self):
+    def init_column_converter(self):
         """Initiate the Converting columns class"""
-        self.column_conversion = ConvertingColumns(self.config)
+        self.column_conversion = ColumnConverter(self.config)
     
-    def identify_what_to_convert(self) -> list[bool, type]:
+    
+    def identify_what_to_convert(self, path_to_reference: Path, access_to_db: str) -> list[bool, type]:
         """
         This is gpt enhanced version of my code so that it is a bit more functional programming style
         """
@@ -27,15 +43,12 @@ class DetectingColumnsToConvert:
                     return [False, float]
             return [True, str]
 
-        headers = self.config.path_to_reference
-        db = self.config.access_to_db
-
-        self.needs_conversion: dict[ {"some", int}] = {header: analyze_column(db[header]) for header in headers}
-        return self.needs_conversion
+        self.needs_conversion: dict[ {"some", int}] = {header: analyze_column(access_to_db[header]) for header in path_to_reference}
     
-    def detected_column_mismatch_conversion(self) -> bool:
+    
+    def detected_column_mismatch_conversion(self, path_to_reference: Path) -> bool:
         """This function is in charge of ensuring that columns that have been identified to be in the wrong format be converted into the correct format"""
-        for header in self.config.path_to_reference:
+        for header in path_to_reference:
             if self.needs_conversion[header][0] == False :
                 if self.needs_conversion[header][1] == float:
                     if self.column_conversion.convert_to_float(header) == True:
@@ -45,20 +58,12 @@ class DetectingColumnsToConvert:
                 self.needs_conversion[header][0] = True
         return True
     
-    def conversion_process(self) -> bool:
-        """This is the key function that will be called by the operation to ensure that all the necessary functions are called in correct order and effectivly"""
-        try:
-            self.converting_column()
-            self.identify_what_to_convert()
-            self.detected_column_mismatch_conversion()
-        except:
-            raise ValueError("Error in conversion")
-        return True
+    
 
 
-class ConvertingColumns(DetectingColumnsToConvert):
+class ColumnConverter:
     def __init__(self, config):
-        super().__init__(config)
+        self.config = config
     
     def convert_to_float(self, converting) -> bool:
         """This function will be used to convert columns if needed in order for later opperations
